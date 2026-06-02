@@ -4,6 +4,7 @@ import argparse
 import importlib
 import json
 import sys
+import time
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
@@ -255,6 +256,12 @@ def main() -> int:
     parser.add_argument("--pass-threshold", type=float, default=80.0)
     parser.add_argument("--judge-provider", default=None, choices=["google", "ollama"])
     parser.add_argument("--judge-model-name", default=None)
+    parser.add_argument(
+        "--sleep",
+        type=float,
+        default=10.0,
+        help="Seconds to wait between graded cases to avoid hitting API rate limits.",
+    )
     args = parser.parse_args()
 
     module = importlib.import_module(args.module)
@@ -267,7 +274,9 @@ def main() -> int:
         effective_judge_provider = args.provider
 
     scores: list[CaseScore] = []
-    for case in cases:
+    for index, case in enumerate(cases):
+        if args.sleep > 0 and index > 0:
+            time.sleep(args.sleep)
         raw_result = module.run_agent(
             case["query"],
             provider=args.provider,
